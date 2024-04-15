@@ -1,0 +1,26 @@
+image: node:18.16-alpine
+
+before_script:
+  - apk add rsync openssh-client
+  - node -v
+  - eval $(ssh-agent -s)
+  - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add - > /dev/null
+  - mkdir -p ~/.ssh
+  - chmod 700 ~/.ssh
+  - ssh-keyscan 3.109.18.205  >> ~/.ssh/known_hosts
+  - chmod 644 ~/.ssh/known_hosts
+  - rm -rf .git
+  - rm -rf .vscode
+  - yarn install --silent
+  - yarn run build
+
+stages:
+  - deploy_develop
+
+deploy_develop:
+  stage: deploy_develop
+  script:
+    - rsync -a --delete . gitlab@3.109.18.205:/home/gitlab/frontend
+    - ssh gitlab@3.109.18.205 'pm2 restart frontend'
+  only:
+    - master
